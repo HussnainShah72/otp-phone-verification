@@ -22,6 +22,10 @@ The app walks the user through three steps:
 A wrong code that is still retryable shows the remaining attempts inline:
 [`05-wrong-code-inline.png`](docs/screenshots/05-wrong-code-inline.png).
 
+**All screenshots as a single PDF:**
+[`docs/otp-verification-screenshots.pdf`](docs/otp-verification-screenshots.pdf) — captioned,
+one screen per page, with a cover page explaining the setup.
+
 **Screen recording:** [`docs/recording/otp-verification-demo.webm`](docs/recording/otp-verification-demo.webm)
 — one full successful run followed by a failed one.
 

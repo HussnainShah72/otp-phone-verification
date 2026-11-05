@@ -2,6 +2,10 @@
 
 Evidence of the complete OTP flow: sending the code, receiving it, and verifying it.
 
+**Submission PDF:** [`otp-verification-screenshots.pdf`](otp-verification-screenshots.pdf) —
+every screenshot below, captioned, one per page, with a cover page. This is the file to hand in
+if a single document is wanted.
+
 ## Screenshots — `screenshots/`
 
 | File | Shows |
