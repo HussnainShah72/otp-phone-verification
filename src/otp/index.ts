@@ -7,7 +7,12 @@ import {
 import type { OtpProvider } from './types';
 
 export * from './types';
-export { RECAPTCHA_CONTAINER_ID } from './firebaseProvider';
+export {
+  RECAPTCHA_CONTAINER_ID,
+  registerNativeRecaptcha,
+  firebaseWebConfig,
+} from './firebaseProvider';
+export { RecaptchaModal, type RecaptchaModalHandle } from './RecaptchaModal';
 export { isFirebaseConfigured, isFirebaseSupportedHere };
 
 /**
@@ -15,8 +20,7 @@ export { isFirebaseConfigured, isFirebaseSupportedHere };
  * is the provider the project is built around. Otherwise the app falls back to
  * the Express backend (Twilio Verify, or the demo provider).
  *
- * The fallback is what keeps the app usable in Expo Go, where Firebase phone
- * auth cannot run: its reCAPTCHA step needs a browser DOM.
+ * The fallback keeps the app usable when no Firebase project is configured.
  */
 export function selectProvider(): OtpProvider {
   if (isFirebaseConfigured() && isFirebaseSupportedHere()) {
@@ -28,10 +32,7 @@ export function selectProvider(): OtpProvider {
 /** Why Firebase is not being used, or null when it is. */
 export function firebaseFallbackReason(): string | null {
   if (isFirebaseConfigured() && isFirebaseSupportedHere()) return null;
-  if (!isFirebaseConfigured()) {
-    return 'Firebase is not configured, so the app is using the verification server. Add the EXPO_PUBLIC_FIREBASE_* values to .env to switch.';
-  }
-  return 'Firebase phone auth needs a browser for its reCAPTCHA check, so Expo Go falls back to the verification server. Open the app with "w" for the Firebase flow.';
+  return 'Firebase is not configured, so the app is using the verification server. Add the EXPO_PUBLIC_FIREBASE_* values to .env to switch.';
 }
 
 export const otpProvider = selectProvider();

@@ -2,8 +2,11 @@ import { Platform } from 'react-native';
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  inMemoryPersistence,
   signInWithPhoneNumber,
   RecaptchaVerifier,
+  type ApplicationVerifier,
   type Auth,
   type ConfirmationResult,
 } from 'firebase/auth';
@@ -33,13 +36,24 @@ export function isFirebaseConfigured(): boolean {
 }
 
 /**
- * Phone auth needs a reCAPTCHA challenge, and the JS SDK's verifier is a DOM
- * widget. That exists on web; in Expo Go there is no DOM, so the SDK cannot
- * run this flow and the app falls back to the backend provider.
+ * Supported everywhere now: the browser uses the SDK's own RecaptchaVerifier,
+ * and native uses the WebView-hosted challenge in RecaptchaModal.
  */
 export function isFirebaseSupportedHere(): boolean {
-  return Platform.OS === 'web';
+  return true;
 }
+
+/**
+ * On native, PhoneScreen mounts <RecaptchaModal> and registers its handle here.
+ * The modal owns the WebView that actually renders the challenge.
+ */
+let nativeRecaptcha: { verify: () => Promise<string> } | null = null;
+
+export function registerNativeRecaptcha(handle: { verify: () => Promise<string> } | null) {
+  nativeRecaptcha = handle;
+}
+
+export const firebaseWebConfig = firebaseConfig;
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -50,7 +64,15 @@ function getFirebaseAuth(): Auth {
     app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
   }
   if (!auth) {
-    auth = getAuth(app);
+    try {
+      // In-memory persistence keeps this working identically on web and in
+      // Expo Go: verifying a phone number needs no session to outlive the app,
+      // and it avoids requiring AsyncStorage just to initialise auth.
+      auth = initializeAuth(app, { persistence: inMemoryPersistence });
+    } catch {
+      // Already initialised (fast refresh, or a second call).
+      auth = getAuth(app);
+    }
     // Send the SMS in the device's language where Firebase supports it.
     auth.useDeviceLanguage();
   }
@@ -62,7 +84,19 @@ function getFirebaseAuth(): Auth {
  * each call, so it is reset rather than rebuilt — rebuilding leaves orphaned
  * widgets in the container and the second send silently fails.
  */
-async function getVerifier(): Promise<RecaptchaVerifier> {
+async function getVerifier(): Promise<ApplicationVerifier> {
+  if (Platform.OS !== 'web') {
+    if (!nativeRecaptcha) {
+      throw new OtpError(
+        'The reCAPTCHA view is not ready yet. Wait a moment and try again.',
+        'recaptcha_not_ready'
+      );
+    }
+    const handle = nativeRecaptcha;
+    // Firebase only needs { type, verify } — the modal supplies the token.
+    return { type: 'recaptcha', verify: () => handle.verify() };
+  }
+
   const authInstance = getFirebaseAuth();
 
   if (typeof document !== 'undefined' && !document.getElementById(RECAPTCHA_CONTAINER_ID)) {
@@ -123,14 +157,6 @@ export const firebaseProvider: OtpProvider = {
         available: false,
         detail:
           'Firebase is not configured. Copy .env.example to .env and fill in the EXPO_PUBLIC_FIREBASE_* values from your Firebase web app config.',
-      };
-    }
-    if (!isFirebaseSupportedHere()) {
-      return {
-        ...base,
-        available: false,
-        detail:
-          'Firebase phone auth needs a browser for its reCAPTCHA check, so it cannot run in Expo Go. Open the app with "w" (web) to use Firebase.',
       };
     }
     return { ...base, available: true, detail: `Project ${firebaseConfig.projectId}` };

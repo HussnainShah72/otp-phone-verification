@@ -1,12 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Banner from '../components/Banner';
 import PrimaryButton from '../components/PrimaryButton';
 import {
   OtpError,
   RECAPTCHA_CONTAINER_ID,
+  RecaptchaModal,
+  firebaseWebConfig,
+  isFirebaseConfigured,
   otpProvider,
+  registerNativeRecaptcha,
   type ProviderInfo,
+  type RecaptchaModalHandle,
   type SendResult,
 } from '../otp';
 import { COUNTRIES, type Country } from '../config';
@@ -26,6 +31,16 @@ export default function PhoneScreen({ onCodeSent, providerInfo, fallbackReason }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+
+  // Native reCAPTCHA host. On web the SDK renders into the div below instead.
+  const recaptchaRef = useRef<RecaptchaModalHandle>(null);
+  const useNativeRecaptcha = Platform.OS !== 'web' && isFirebaseConfigured();
+
+  useEffect(() => {
+    if (!useNativeRecaptcha) return;
+    registerNativeRecaptcha(recaptchaRef.current);
+    return () => registerNativeRecaptcha(null);
+  }, [useNativeRecaptcha]);
 
   // Users often type the trunk "0" (0300...); the country code replaces it.
   const digits = useMemo(
@@ -125,8 +140,15 @@ export default function PhoneScreen({ onCodeSent, providerInfo, fallbackReason }
 
       <ProviderStatus info={providerInfo} fallbackReason={fallbackReason} />
 
-      {/* Firebase attaches its invisible reCAPTCHA widget here (web only). */}
-      <View nativeID={RECAPTCHA_CONTAINER_ID} style={styles.recaptcha} />
+      {/* Web: Firebase attaches its invisible reCAPTCHA widget to this node. */}
+      {Platform.OS === 'web' ? (
+        <View nativeID={RECAPTCHA_CONTAINER_ID} style={styles.recaptcha} />
+      ) : null}
+
+      {/* Native: the challenge runs inside a WebView in this modal. */}
+      {useNativeRecaptcha ? (
+        <RecaptchaModal ref={recaptchaRef} config={firebaseWebConfig} />
+      ) : null}
 
       <Modal
         visible={pickerOpen}
