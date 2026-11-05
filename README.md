@@ -54,9 +54,20 @@ code the user typed is correct — the server only relays the answer.
 
 ## Demo mode: runs without a Twilio account
 
-Twilio is a paid service and a trial account can only text pre-verified numbers, which makes a
-project like this awkward to set up and grade. So the server ships with a **demo provider** that
-is used automatically when no Twilio credentials are present:
+> **Why this project ships running in demo mode.** Twilio does not offer free trials in Pakistan —
+> signing up lands on *"Trials are currently unavailable in your region"* with 0 free SMS and a
+> prompt to add a payment method. Firebase Phone Auth is no longer an alternative either: SMS
+> sign-in was removed from the free Spark plan in September 2024 and now requires the Blaze plan
+> with billing attached. Pakistan also requires PTA-approved sender IDs for A2P messaging, which
+> is why trial routes are blocked in the first place.
+>
+> The Twilio Verify integration in this repository is complete and real — see
+> [`server/src/providers/twilio.js`](server/src/providers/twilio.js). It activates the moment
+> credentials are present, with no code changes. What is missing is a funded SMS account, not the
+> implementation.
+
+The server ships with a **demo provider** that is used automatically when no Twilio credentials
+are present:
 
 - it generates a real random 6-digit code with a 5-minute expiry,
 - prints it to the server console **and** shows it in the app in a clearly-labelled banner,
