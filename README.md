@@ -26,8 +26,9 @@ A wrong code that is still retryable shows the remaining attempts inline:
 [`docs/otp-verification-screenshots.pdf`](docs/otp-verification-screenshots.pdf) — captioned,
 one screen per page, with a cover page explaining the setup.
 
-**Screen recording:** [`docs/recording/otp-verification-demo.webm`](docs/recording/otp-verification-demo.webm)
-— one full successful run followed by a failed one.
+**Screen recording:** [`docs/recording/otp-verification-demo.mp4`](docs/recording/otp-verification-demo.mp4)
+— one full successful run followed by a failed one. (A `.webm` of the same recording sits
+alongside it for inline playback on the web.)
 
 These were captured at a 412 x 915 phone viewport with the backend in demo mode, which is why the
 code is visible on screen. See [`docs/README.md`](docs/README.md) for details and for how to

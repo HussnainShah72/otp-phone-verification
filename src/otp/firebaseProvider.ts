@@ -127,8 +127,12 @@ const ERROR_MESSAGES: Record<string, string> = {
     'The reCAPTCHA check failed. Make sure this domain is listed under Authentication > Settings > Authorized domains.',
   'auth/invalid-app-credential':
     'The reCAPTCHA token was rejected. Reload the page and try again.',
+  // Firebase collapses two very different causes into this one code: the Phone
+  // provider being off, and the destination country being outside the project's
+  // SMS region policy. The second is easy to miss because the console shows
+  // Phone as "Enabled" while every send still fails.
   'auth/operation-not-allowed':
-    'Phone sign-in is not enabled for this Firebase project. Enable it under Authentication > Sign-in method > Phone.',
+    'Firebase refused to send to this number. Either Phone sign-in is off (Authentication > Sign-in method > Phone), or this country is not allowed by the project\'s SMS region policy (Authentication > Settings > SMS region policy).',
   'auth/billing-not-enabled':
     'Firebase requires the Blaze (pay-as-you-go) plan to send real SMS. Either upgrade the project, or add this number under Authentication > Sign-in method > Phone numbers for testing.',
   'auth/unauthorized-domain':

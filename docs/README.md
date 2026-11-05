@@ -18,9 +18,14 @@ if a single document is wanted.
 
 ## Recording — `recording/`
 
-`otp-verification-demo.webm` — the full run end to end: enter the number → request the code →
-receive it → type it → success, then a second run that fails verification. WebM plays in any
-modern browser, in VLC, and in Windows Media Player.
+`otp-verification-demo.mp4` — the full run end to end: enter the number → request the code →
+receive it → type it → success, then a second run that fails verification.
+
+H.264, 412 × 914, 19 seconds, 485 KB, with `faststart` set so playback begins before the whole
+file has downloaded. **This is the file to submit** — MP4 plays everywhere, including PowerPoint,
+Google Slides and every LMS video player.
+
+`otp-verification-demo.webm` — the same recording in WebM, kept for inline playback in browsers.
 
 ## How these were captured
 
