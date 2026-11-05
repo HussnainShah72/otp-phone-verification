@@ -3,20 +3,31 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@expo/metro-runtime": "~58.0.17",
     "expo": "~58.0.23",
+    "expo-constants": "~58.0.15",
     "expo-status-bar": "~58.0.4",
     "react": "19.3.0",
-    "react-native": "0.88.1"
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "concurrently": "^10.0.6",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "server": "node server/src/index.js",
+    "server:install": "npm --prefix server install",
+    "dev": "concurrently --names \"SERVER,EXPO\" --prefix-colors \"magenta,cyan\" \"npm run server\" \"npm start\"",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "npm --prefix server install"
   },
-  "private": true
+  "private": true,
+  "description": "React Native (Expo) app that verifies a phone number with an SMS one-time passcode via Twilio Verify."
 }
