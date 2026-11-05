@@ -13,7 +13,13 @@ import { StatusBar } from 'expo-status-bar';
 import OtpScreen from './src/screens/OtpScreen';
 import PhoneScreen from './src/screens/PhoneScreen';
 import ResultScreen from './src/screens/ResultScreen';
-import { OtpApiError, checkHealth, sendOtp, type SendOtpResult } from './src/api/otp';
+import {
+  OtpError,
+  firebaseFallbackReason,
+  otpProvider,
+  type ProviderInfo,
+  type SendResult,
+} from './src/otp';
 import { colors, radius, spacing } from './src/theme';
 
 type Step = 'phone' | 'otp' | 'result';
@@ -25,41 +31,42 @@ const STEP_LABELS = ['Number', 'Code', 'Done'] as const;
 export default function App() {
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
-  const [sendResult, setSendResult] = useState<SendOtpResult | null>(null);
+  const [sendResult, setSendResult] = useState<SendResult | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
-  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
-  const [serverProvider, setServerProvider] = useState<string | null>(null);
-  const [serverDemoMode, setServerDemoMode] = useState(false);
+  const [providerInfo, setProviderInfo] = useState<ProviderInfo | null>(null);
 
   const [retryLoading, setRetryLoading] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
-  // Ping the backend once on launch so the first screen can report its state
+  // Probe the provider once on launch so the first screen can report its state
   // instead of failing only when the user taps Send.
   useEffect(() => {
     let cancelled = false;
-    checkHealth()
-      .then((health) => {
-        if (cancelled) return;
-        setServerReachable(health.ok);
-        setServerProvider(health.provider);
-        setServerDemoMode(health.demoMode);
+    otpProvider
+      .describe()
+      .then((info) => {
+        if (!cancelled) setProviderInfo(info);
       })
       .catch(() => {
-        if (!cancelled) setServerReachable(false);
+        if (!cancelled) {
+          setProviderInfo({
+            name: otpProvider.name,
+            label: 'Verification provider',
+            demoMode: false,
+            available: false,
+            detail: 'Could not reach the verification provider.',
+          });
+        }
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const handleCodeSent = useCallback((nextPhone: string, result: SendOtpResult) => {
+  const handleCodeSent = useCallback((nextPhone: string, result: SendResult) => {
     setPhone(nextPhone);
     setSendResult(result);
-    setServerProvider(result.provider);
-    setServerDemoMode(result.demoMode);
-    setServerReachable(true);
     setStep('otp');
   }, []);
 
@@ -88,13 +95,13 @@ export default function App() {
     setRetryError(null);
     setRetryLoading(true);
     try {
-      const result = await sendOtp(phone);
+      const result = await otpProvider.send(phone);
       setSendResult(result);
       setOutcome(null);
       setStep('otp');
     } catch (err) {
       setRetryError(
-        err instanceof OtpApiError ? err.message : 'Could not send a new code. Please try again.'
+        err instanceof OtpError ? err.message : 'Could not send a new code. Please try again.'
       );
     } finally {
       setRetryLoading(false);
@@ -121,9 +128,8 @@ export default function App() {
             {step === 'phone' && (
               <PhoneScreen
                 onCodeSent={handleCodeSent}
-                serverProvider={serverProvider}
-                serverDemoMode={serverDemoMode}
-                serverReachable={serverReachable}
+                providerInfo={providerInfo}
+                fallbackReason={firebaseFallbackReason()}
               />
             )}
 
@@ -142,7 +148,7 @@ export default function App() {
                 outcome={outcome.kind}
                 phone={phone}
                 message={outcome.message}
-                provider={serverProvider ?? 'demo'}
+                providerLabel={providerInfo?.label ?? 'Verification provider'}
                 onRetry={handleRetry}
                 onStartOver={handleStartOver}
                 retryLoading={retryLoading}
@@ -151,7 +157,7 @@ export default function App() {
             )}
 
             <Text style={styles.footer}>
-              OTP phone verification · {serverDemoMode ? 'Demo provider' : 'Twilio Verify'}
+              OTP phone verification · {providerInfo?.label ?? 'connecting…'}
             </Text>
           </View>
         </ScrollView>
@@ -180,12 +186,7 @@ function Stepper({ activeIndex }: { activeIndex: number }) {
                   done && styles.stepperDotDone,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.stepperNumber,
-                    (active || done) && styles.stepperNumberOn,
-                  ]}
-                >
+                <Text style={[styles.stepperNumber, (active || done) && styles.stepperNumberOn]}>
                   {done ? '✓' : index + 1}
                 </Text>
               </View>

@@ -2,24 +2,24 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Banner from '../components/Banner';
 import PrimaryButton from '../components/PrimaryButton';
-import { OtpApiError, sendOtp, type SendOtpResult } from '../api/otp';
-import { API_BASE_URL, COUNTRIES, type Country } from '../config';
+import {
+  OtpError,
+  RECAPTCHA_CONTAINER_ID,
+  otpProvider,
+  type ProviderInfo,
+  type SendResult,
+} from '../otp';
+import { COUNTRIES, type Country } from '../config';
 import { colors, radius, shadow, spacing } from '../theme';
 
 type Props = {
-  onCodeSent: (phone: string, result: SendOtpResult) => void;
-  serverProvider: string | null;
-  serverDemoMode: boolean;
-  serverReachable: boolean | null;
+  onCodeSent: (phone: string, result: SendResult) => void;
+  providerInfo: ProviderInfo | null;
+  fallbackReason: string | null;
 };
 
 /** Step 1 of the flow: collect the phone number and request an SMS code. */
-export default function PhoneScreen({
-  onCodeSent,
-  serverProvider,
-  serverDemoMode,
-  serverReachable,
-}: Props) {
+export default function PhoneScreen({ onCodeSent, providerInfo, fallbackReason }: Props) {
   const [country, setCountry] = useState<Country>(COUNTRIES[0]);
   const [localNumber, setLocalNumber] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -40,11 +40,11 @@ export default function PhoneScreen({
     setError(null);
     setLoading(true);
     try {
-      const result = await sendOtp(fullPhone);
+      const result = await otpProvider.send(fullPhone);
       onCodeSent(result.phone ?? fullPhone, result);
     } catch (err) {
       setError(
-        err instanceof OtpApiError ? err.message : 'Could not send the code. Please try again.'
+        err instanceof OtpError ? err.message : 'Could not send the code. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -123,11 +123,10 @@ export default function PhoneScreen({
         </View>
       </View>
 
-      <ServerStatus
-        reachable={serverReachable}
-        provider={serverProvider}
-        demoMode={serverDemoMode}
-      />
+      <ProviderStatus info={providerInfo} fallbackReason={fallbackReason} />
+
+      {/* Firebase attaches its invisible reCAPTCHA widget here (web only). */}
+      <View nativeID={RECAPTCHA_CONTAINER_ID} style={styles.recaptcha} />
 
       <Modal
         visible={pickerOpen}
@@ -179,43 +178,44 @@ export default function PhoneScreen({
   );
 }
 
-/** Small footer line so it is obvious whether the backend is up, and which provider is live. */
-function ServerStatus({
-  reachable,
-  provider,
-  demoMode,
+/** Footer line showing which OTP provider is live, and why if it is not Firebase. */
+function ProviderStatus({
+  info,
+  fallbackReason,
 }: {
-  reachable: boolean | null;
-  provider: string | null;
-  demoMode: boolean;
+  info: ProviderInfo | null;
+  fallbackReason: string | null;
 }) {
-  if (reachable === null) {
+  if (info === null) {
     return (
-      <View style={styles.status}>
-        <View style={[styles.dot, { backgroundColor: colors.textFaint }]} />
-        <Text style={styles.statusText}>Connecting to verification server...</Text>
+      <View style={styles.statusBlock}>
+        <View style={styles.status}>
+          <View style={[styles.dot, { backgroundColor: colors.textFaint }]} />
+          <Text style={styles.statusText}>Connecting to verification provider...</Text>
+        </View>
       </View>
     );
   }
 
-  if (!reachable) {
+  if (!info.available) {
     return (
       <View style={styles.statusCard}>
         <Banner
           tone="warning"
-          title="Verification server offline"
-          message={`No response from ${API_BASE_URL}. Start it with "npm run server", then reload the app.`}
+          title={`${info.label} unavailable`}
+          message={info.detail ?? 'The verification provider could not be reached.'}
         />
       </View>
     );
   }
 
   return (
-    <View style={styles.status}>
-      <View style={[styles.dot, { backgroundColor: colors.success }]} />
-      <Text style={styles.statusText}>
-        Connected · {demoMode ? 'Demo provider' : `${provider} Verify`}
-      </Text>
+    <View style={styles.statusBlock}>
+      <View style={styles.status}>
+        <View style={[styles.dot, { backgroundColor: colors.success }]} />
+        <Text style={styles.statusText}>Connected · {info.label}</Text>
+      </View>
+      {fallbackReason ? <Text style={styles.statusNote}>{fallbackReason}</Text> : null}
     </View>
   );
 }
@@ -305,11 +305,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xl,
   },
   statusCard: { marginTop: spacing.xl },
+  statusBlock: { marginTop: spacing.xl },
   dot: { width: 8, height: 8, borderRadius: radius.pill },
   statusText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  statusNote: {
+    marginTop: spacing.sm,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textFaint,
+    textAlign: 'center',
+  },
+  // Invisible reCAPTCHA host: Firebase renders its widget into this node.
+  recaptcha: { height: 0, overflow: 'hidden' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: colors.card,

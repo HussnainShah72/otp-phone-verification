@@ -3,13 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Banner from '../components/Banner';
 import OtpInput from '../components/OtpInput';
 import PrimaryButton from '../components/PrimaryButton';
-import { OtpApiError, sendOtp, verifyOtp, type SendOtpResult } from '../api/otp';
+import { OtpError, otpProvider, type SendResult } from '../otp';
 import { OTP_LENGTH } from '../config';
 import { colors, radius, shadow, spacing } from '../theme';
 
 type Props = {
   phone: string;
-  sendResult: SendOtpResult;
+  sendResult: SendResult;
   onVerified: (phone: string, message: string) => void;
   onFailed: (phone: string, message: string) => void;
   onChangeNumber: () => void;
@@ -28,6 +28,8 @@ export default function OtpScreen({
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoCode, setDemoCode] = useState<string | undefined>(sendResult.demoCode);
+  // Firebase hands back a ConfirmationResult that `verify` needs; a resend replaces it.
+  const [session, setSession] = useState(sendResult.session);
   const [secondsLeft, setSecondsLeft] = useState(sendResult.resendAfterSeconds ?? 30);
   // Guards against the auto-submit and the button both firing a request.
   const inFlight = useRef(false);
@@ -47,7 +49,7 @@ export default function OtpScreen({
       setError(null);
       setVerifying(true);
       try {
-        const result = await verifyOtp(phone, candidate);
+        const result = await otpProvider.verify(session, phone, candidate);
 
         if (result.verified) {
           onVerified(phone, result.message);
@@ -65,14 +67,14 @@ export default function OtpScreen({
         setCode('');
       } catch (err) {
         setError(
-          err instanceof OtpApiError ? err.message : 'Could not verify the code. Please try again.'
+          err instanceof OtpError ? err.message : 'Could not verify the code. Please try again.'
         );
       } finally {
         inFlight.current = false;
         setVerifying(false);
       }
     },
-    [code, onFailed, onVerified, phone]
+    [code, onFailed, onVerified, phone, session]
   );
 
   const handleResend = async () => {
@@ -80,12 +82,13 @@ export default function OtpScreen({
     setError(null);
     setResending(true);
     try {
-      const result = await sendOtp(phone);
+      const result = await otpProvider.send(phone);
+      setSession(result.session);
       setDemoCode(result.demoCode);
       setCode('');
       setSecondsLeft(result.resendAfterSeconds ?? 30);
     } catch (err) {
-      if (err instanceof OtpApiError) {
+      if (err instanceof OtpError) {
         setError(err.message);
         if (err.retryAfterSeconds) setSecondsLeft(err.retryAfterSeconds);
       } else {

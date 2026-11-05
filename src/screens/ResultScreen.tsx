@@ -8,7 +8,7 @@ type Props = {
   outcome: 'success' | 'failure';
   phone: string;
   message: string;
-  provider: string;
+  providerLabel: string;
   onRetry: () => void;
   onStartOver: () => void;
   retryLoading?: boolean;
@@ -20,7 +20,7 @@ export default function ResultScreen({
   outcome,
   phone,
   message,
-  provider,
+  providerLabel,
   onRetry,
   onStartOver,
   retryLoading = false,
@@ -55,7 +55,7 @@ export default function ResultScreen({
           <View style={styles.detailDivider} />
           <Detail label="Status" value={success ? 'Verified' : 'Not verified'} />
           <View style={styles.detailDivider} />
-          <Detail label="Provider" value={provider === 'twilio' ? 'Twilio Verify' : 'Demo provider'} />
+          <Detail label="Provider" value={providerLabel} />
         </View>
 
         {retryError ? (
