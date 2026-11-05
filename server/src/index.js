@@ -1,8 +1,12 @@
 'use strict';
 
-require('dotenv').config();
-
 const os = require('os');
+const path = require('path');
+
+// Resolve .env relative to this file, not the working directory, so
+// `npm run server` from the project root still finds server/.env.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
 const express = require('express');
 const cors = require('cors');
 

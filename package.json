@@ -23,10 +23,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "server": "node server/src/index.js",
-    "server:install": "npm --prefix server install",
+    "server:install": "cd server && npm install",
     "dev": "concurrently --names \"SERVER,EXPO\" --prefix-colors \"magenta,cyan\" \"npm run server\" \"npm start\"",
     "typecheck": "tsc --noEmit",
-    "postinstall": "npm --prefix server install"
+    "postinstall": "cd server && npm install"
   },
   "private": true,
   "description": "React Native (Expo) app that verifies a phone number with an SMS one-time passcode via Twilio Verify."
